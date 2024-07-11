@@ -16,7 +16,7 @@ It is only called from sunset to sunrise and the sensor going offline at night
 
 ### Installation
 Use [HACS](https://custom-components.github.io/hacs/) to point to this github URL:
-https://github.com/skelgaard/homeassistant-apsystems
+https://github.com/jeremletrol81/homeassistant-apsystems
 
 ### Configuration
 Use your apsystemsema.com to configure the configuration.yaml.
