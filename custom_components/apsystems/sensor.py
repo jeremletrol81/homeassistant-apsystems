@@ -11,7 +11,7 @@ import requests
 import voluptuous as vol  # type: ignore
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
-     SensorEntity,
+    SensorEntity,
     SensorDeviceClass,
     )
 from homeassistant.const import (
@@ -37,6 +37,10 @@ SENSOR_ENERGY_LATEST = "energy_latest"
 SENSOR_ENERGY_TOTAL = "energy_total"
 SENSOR_POWER_LATEST = "power_latest"
 SENSOR_POWER_MAX = "power_max_day"
+SENSOR_CONSUMED_LATEST = "consumed_latest"
+SENSOR_EXPORTED_LATEST = "exported_latest"
+SENSOR_CONSUMED_TOTAL = "consumed_total"
+SENSOR_EXPORTED_TOTAL = "exported_total"
 SENSOR_TIME = "date"
 
 # to move apsystems timestamp to UTC
@@ -61,33 +65,81 @@ class ApsMetadata(NamedTuple):
     icon: str
     unit: str = ""
     state_class: Optional[str] = None
+    device_class: Optional[str] = None
 
 
 SENSORS = {
-    SENSOR_ENERGY_DAY: ApsMetadata(
-        json_key="total",
-        unit=UnitOfEnergy.KILO_WATT_HOUR,
+    # "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerWithAllParameterOnCurrentDayAjax"]
+    SENSOR_POWER_LATEST: ApsMetadata(
+        json_key="P",
+        unit=UnitOfPower.WATT,
         icon="mdi:solar-power",
-        state_class="total_increasing",
+        device_class="power",
+        state_class="measurement",
     ),
+    SENSOR_CONSUMED_LATEST: ApsMetadata(
+        json_key="U",
+        unit=UnitOfPower.WATT,
+        icon="mdi:solar-power",
+        device_class="power",
+        state_class="measurement",
+    ),
+    SENSOR_EXPORTED_LATEST: ApsMetadata(
+        json_key="C",
+        unit=UnitOfPower.WATT,
+        icon="mdi:solar-power",
+        device_class="power",
+        state_class="measurement",
+    ),
+    SENSOR_TIME: ApsMetadata(
+        json_key="T",
+        icon="mdi:clock-outline",
+    ),
+
+    # "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerOnCurrentDayAjax"
     SENSOR_ENERGY_LATEST: ApsMetadata(
         json_key="energy",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
+        device_class="energy",
+        state_class="measurement",
     ),
     SENSOR_POWER_MAX: ApsMetadata(
         json_key="max",
         unit=UnitOfPower.WATT,
         icon="mdi:solar-power",
+        device_class="power",
+        state_class="measurement",
     ),
-    SENSOR_POWER_LATEST: ApsMetadata(
-        json_key="power",
-        unit=UnitOfPower.WATT,
+
+    # "https://apsystemsema.com/ema/ajax/getReportApiAjax/getEnergyEveryFiveMinutesOnCurrentDayAjax"
+    SENSOR_CONSUMED_TOTAL: ApsMetadata(
+        json_key="usageTotal",
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
+        device_class="energy",
+        state_class="total_increasing",
     ),
-    SENSOR_TIME: ApsMetadata(
-        json_key="time",
-        icon="mdi:clock-outline",
+    SENSOR_EXPORTED_TOTAL: ApsMetadata(
+        json_key="sellTotal",
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        icon="mdi:solar-power",
+        device_class="energy",
+        state_class="total_increasing",
+    ),
+    SENSOR_ENERGY_TOTAL: ApsMetadata(
+        json_key="productionTotal",
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        icon="mdi:solar-power",
+        device_class="energy",
+        state_class="total_increasing",
+    ),
+    SENSOR_ENERGY_DAY: ApsMetadata(
+        json_key="buyTotal",
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        icon="mdi:solar-power",
+        device_class="energy",
+        state_class="total_increasing",
     ),
 }
 
@@ -122,8 +174,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class ApsystemsSensor(SensorEntity):
     """Representation of a Sensor."""
 
-    _attr_device_class = SensorDeviceClass.ENERGY
-
     def __init__(
         self,
         sensor_name: str,
@@ -152,6 +202,11 @@ class ApsystemsSensor(SensorEntity):
     def state_class(self):
         """Return the state_class of the sensor."""
         return self._metadata.state_class
+
+    @property
+    def device_class(self):
+        """Return the device_class of the sensor."""
+        return self._metadata.device_class
 
     @property
     def state(self):
@@ -247,7 +302,9 @@ class ApsystemsSensor(SensorEntity):
 
 class APsystemsFetcher:
     url_login = "https://www.apsystemsema.com/ema/intoDemoUser.action?id="
-    url_data = "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerOnCurrentDayAjax"
+    url_datas = ["https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerOnCurrentDayAjax",
+                 "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerWithAllParameterOnCurrentDayAjax",
+                 "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getEnergyEveryFiveMinutesOnCurrentDayAjax"]
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:52.0) Chrome/50.0.2661.102 Firefox/62.0"
     }
@@ -277,8 +334,8 @@ class APsystemsFetcher:
 
             #OLD version datetime.today().strftime("%Y%m%d")
             post_data = {'queryDate': (datetime.now() - timedelta(seconds=(offset_hours/1000))).strftime("%Y%m%d"),
-                      'selectedValue': self._ecu_id,
-                      'systemId': self._system_id}
+                         'selectedValue': self._ecu_id,
+                         'systemId': self._system_id}
 
             _LOGGER.debug('post_data:')
             _LOGGER.debug(post_data)
@@ -286,23 +343,23 @@ class APsystemsFetcher:
             s = requests.session()
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             _LOGGER.debug('starting: ' + now)
-            result_data = await self._hass.async_add_executor_job(
-                s.request,
-                "POST",
-                self.url_data,
-                None,
-                post_data,
-                self.headers,
-                browser.cookies.get_dict(),
-            )
+            self.cache = {}
+            for url_data in self.url_datas:
+                result_data = await self._hass.async_add_executor_job(
+                    s.request,
+                    "POST",
+                    url_data,
+                    None,
+                    post_data,
+                    self.headers,
+                    browser.cookies.get_dict(),
+                )
 
-            _LOGGER.debug("status code data: " + str(result_data.status_code))
+                _LOGGER.debug("status code data: " + str(result_data.status_code))
 
-            if result_data.status_code == 204:
-                self.cache = None
-            else:
-                self.cache = result_data.json()
-            _LOGGER.debug(self.cache)
+                if result_data.status_code != 204:
+                    self.cache.update(result_data.json())
+                _LOGGER.debug(self.cache)
 
             self.cache_timestamp = int(round(time.time() * 1000))
         finally:
