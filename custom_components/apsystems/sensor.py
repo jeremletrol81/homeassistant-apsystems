@@ -11,8 +11,7 @@ import requests
 import voluptuous as vol  # type: ignore
 from homeassistant.components.sensor import (
     PLATFORM_SCHEMA,
-    SensorEntity,
-    SensorDeviceClass,
+    SensorEntity
     )
 from homeassistant.const import (
     CONF_NAME,
@@ -32,9 +31,9 @@ CONF_SUNSET = "sunset"
 CONF_SYSTEM_ID = "systemId"
 
 EXTRA_TIMESTAMP = "timestamp"
-SENSOR_ENERGY_DAY = "energy_day"
+SENSOR_IMPORTED_TOTAL = "imported_total"
 SENSOR_ENERGY_LATEST = "energy_latest"
-SENSOR_ENERGY_TOTAL = "energy_total"
+SENSOR_PRODUCTION_TOTAL = "production_total"
 SENSOR_POWER_LATEST = "power_latest"
 SENSOR_POWER_MAX = "power_max_day"
 SENSOR_CONSUMED_LATEST = "consumed_latest"
@@ -127,14 +126,14 @@ SENSORS = {
         device_class="energy",
         state_class="total_increasing",
     ),
-    SENSOR_ENERGY_TOTAL: ApsMetadata(
+    SENSOR_PRODUCTION_TOTAL: ApsMetadata(
         json_key="productionTotal",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
         device_class="energy",
         state_class="total_increasing",
     ),
-    SENSOR_ENERGY_DAY: ApsMetadata(
+    SENSOR_IMPORTED_TOTAL: ApsMetadata(
         json_key="buyTotal",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
