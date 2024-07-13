@@ -380,8 +380,8 @@ class APsystemsFetcher:
 
                 if result_data.status_code != 204:
                     temp = result_data.json()
-                    temp[timestamp[0][1]] = temp[timestamp[0][0]]
-                    del temp[timestamp[0][0]]
+                    temp[timestamp[1]] = temp[timestamp[0]]
+                    del temp[timestamp[0]]
                     self.cache.update(temp)
 
             post_data = {'date': (datetime.now() - timedelta(seconds=(offset_hours / 1000))).strftime("%Y%m%d"),
@@ -404,7 +404,7 @@ class APsystemsFetcher:
             if result_data.status_code != 204:
                 detail = result_data.json()["detail"]
                 timestamp = list(self.url_data_panel.values())
-                panels = {timestamp[1]: result_data.json()[timestamp[0]]}
+                panels = {timestamp[0][1]: result_data.json()[timestamp[0][0]]}
                 for panel in detail.split("&"):
                     name, data = panel.split("/")
                     panels[name] = []
