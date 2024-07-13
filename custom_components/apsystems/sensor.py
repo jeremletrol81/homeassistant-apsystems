@@ -380,8 +380,8 @@ class APsystemsFetcher:
 
                 if result_data.status_code != 204:
                     temp = result_data.json()
-                    temp[timestamp[1]] = temp[timestamp[0]]
-                    del timestamp[0]
+                    temp[timestamp[0][1]] = temp[timestamp[0][0]]
+                    del temp[timestamp[0][0]]
                     self.cache.update(temp)
 
             post_data = {'date': (datetime.now() - timedelta(seconds=(offset_hours / 1000))).strftime("%Y%m%d"),
@@ -431,7 +431,7 @@ class APsystemsFetcher:
             return self.cache
         else:
             # rules to check cache
-            timestamp_event = int(self.cache['time'][-1]) + offset_hours  # apsystems have 8h delayed in timestamp from UTC
+            timestamp_event = int(self.cache[SENSORS[SENSOR_TIME].json_key][-1]) + offset_hours  # apsystems have 8h delayed in timestamp from UTC
             timestamp_now = int(round(time.time() * 1000))
             cache_time = (5 * 60 * 1000) - (10 * 1000)  # 4:50 minutes
             request_time = 60 * 1000  # 60 seconds to avoid request what is already requested

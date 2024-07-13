@@ -72,5 +72,3 @@ queryDate=20230615&selectedValue=apsystemsema_ecu_id&systemId=apsystemsema_syste
 
 ### Thanx
 Thanx to the author bgbraga(https://github.com/bgbraga/) and skelgaard(https://github.com/skelgaard/) for his work
-
-[//]: # ([![Buy me a beer!]&#40;https://img.shields.io/badge/Buy%20me%20a%20beer!-%F0%9F%8D%BA-yellow.svg&#41;]&#40;https://www.paypal.com/donate/?hosted_button_id=RWTHA7XKSMSZC&#41;)
