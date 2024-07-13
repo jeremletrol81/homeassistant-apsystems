@@ -17,6 +17,8 @@ from homeassistant.util.dt import utcnow as dt_utcnow
 
 CONF_AUTH_ID = "authId"
 CONF_ECU_ID = "ecuId"
+CONF_VIEW_ID = "viewId"
+CONF_PANELS = "panels"
 CONF_SUNSET = "sunset"
 CONF_SYSTEM_ID = "systemId"
 
@@ -42,7 +44,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Required(CONF_AUTH_ID): cv.string,
         vol.Required(CONF_SYSTEM_ID): cv.string,
         vol.Required(CONF_ECU_ID): cv.string,
+        vol.Required(CONF_VIEW_ID): cv.string,
         vol.Optional(CONF_NAME, default="APsystems"): cv.string,
+        vol.Optional(CONF_PANELS, default=[]): cv.ensure_list,
         vol.Optional(CONF_SUNSET, default="off"): cv.string,
     }
 )
@@ -144,14 +148,28 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     auth_id = config[CONF_AUTH_ID]
     system_id = config[CONF_SYSTEM_ID]
     ecu_id = config[CONF_ECU_ID]
+    view_id = config[CONF_VIEW_ID]
     sunset = config[CONF_SUNSET]
+    panels = config[CONF_PANELS]
 
-    #data fetcher
-    fetcher = APsystemsFetcher(hass, auth_id, system_id, ecu_id)
+    # data fetcher
+    fetcher = APsystemsFetcher(hass, auth_id, system_id, ecu_id, view_id)
 
     sensors = []
     for type, metadata in SENSORS.items():
         sensor_name = config.get(CONF_NAME).lower() + "_" + type
+        sensor = ApsystemsSensor(sensor_name, sunset, fetcher, metadata)
+        sensors.append(sensor)
+
+    for panel in panels:
+        metadata = ApsMetadata(
+            json_key=panel,
+            unit=UnitOfPower.WATT,
+            icon="mdi:solar-power",
+            device_class="power",
+            state_class="measurement",
+        )
+        sensor_name = config.get(CONF_NAME).lower() + "_" + panel
         sensor = ApsystemsSensor(sensor_name, sunset, fetcher, metadata)
         sensors.append(sensor)
 
@@ -288,6 +306,7 @@ class APsystemsFetcher:
     url_datas = ["https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerOnCurrentDayAjax",
                  "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerWithAllParameterOnCurrentDayAjax",
                  "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getEnergyEveryFiveMinutesOnCurrentDayAjax"]
+    url_data_panel = "https://www.apsystemsema.com/ema/ajax/getViewAjax/getViewPowerByViewAjax"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:52.0) Chrome/50.0.2661.102 Firefox/62.0"
     }
@@ -295,11 +314,12 @@ class APsystemsFetcher:
     cache_timestamp: Optional[int] = None
     running = False
 
-    def __init__(self, hass, auth_id, system_id, ecu_id):
+    def __init__(self, hass, auth_id, system_id, ecu_id, view_id):
         self._hass = hass
         self._auth_id = auth_id
         self._system_id = system_id
         self._ecu_id = ecu_id
+        self._view_id = view_id
         self._today = datetime.fromisoformat(date.today().isoformat())
 
     async def login(self):
@@ -342,7 +362,35 @@ class APsystemsFetcher:
 
                 if result_data.status_code != 204:
                     self.cache.update(result_data.json())
-                _LOGGER.debug(self.cache)
+
+            post_data = {'date': (datetime.now() - timedelta(seconds=(offset_hours / 1000))).strftime("%Y%m%d"),
+                         'vid': self._view_id,
+                         'sid': self._system_id,
+                         'iid': ""}
+
+            result_data = await self._hass.async_add_executor_job(
+                s.request,
+                "POST",
+                self.url_data_panel,
+                None,
+                post_data,
+                self.headers,
+                browser.cookies.get_dict(),
+            )
+
+            _LOGGER.debug("status code data: " + str(result_data.status_code))
+
+            if result_data.status_code != 204:
+                detail = result_data.json()["detail"]
+                panels = {}
+                for panel in detail.split("&"):
+                    name, data = panel.split("/")
+                    panels[name] = []
+                    for d in data.split(","):
+                        panels[name].append(d)
+
+                self.cache.update(panels)
+            _LOGGER.debug(self.cache)
 
             self.cache_timestamp = int(round(time.time() * 1000))
         finally:
