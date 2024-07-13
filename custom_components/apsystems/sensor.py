@@ -33,6 +33,7 @@ SENSOR_EXPORTED_LATEST = "exported_latest"
 SENSOR_CONSUMED_TOTAL = "consumed_total"
 SENSOR_EXPORTED_TOTAL = "exported_total"
 SENSOR_TIME = "date"
+SENSOR_TIME_2 = "date_2"
 
 # to move apsystems timestamp to UTC
 OFFSET_MS = (
@@ -54,6 +55,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 
 class ApsMetadata(NamedTuple):
     json_key: str
+    time_key: str
     icon: str
     unit: str = ""
     state_class: Optional[str] = None
@@ -64,6 +66,7 @@ SENSORS = {
     # "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerWithAllParameterOnCurrentDayAjax"]
     SENSOR_POWER_LATEST: ApsMetadata(
         json_key="P",
+        time_key="time_1",
         unit=UnitOfPower.WATT,
         icon="mdi:solar-power",
         device_class="power",
@@ -71,6 +74,7 @@ SENSORS = {
     ),
     SENSOR_CONSUMED_LATEST: ApsMetadata(
         json_key="U",
+        time_key="time_1",
         unit=UnitOfPower.WATT,
         icon="mdi:solar-power",
         device_class="power",
@@ -78,19 +82,27 @@ SENSORS = {
     ),
     SENSOR_EXPORTED_LATEST: ApsMetadata(
         json_key="C",
+        time_key="time_1",
         unit=UnitOfPower.WATT,
         icon="mdi:solar-power",
         device_class="power",
         state_class="measurement",
     ),
     SENSOR_TIME: ApsMetadata(
-        json_key="T",
+        json_key="time_1",
+        time_key="time_1",
+        icon="mdi:clock-outline",
+    ),
+    SENSOR_TIME_2: ApsMetadata(
+        json_key="time_2",
+        time_key="time_2",
         icon="mdi:clock-outline",
     ),
 
     # "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerOnCurrentDayAjax"
     SENSOR_ENERGY_LATEST: ApsMetadata(
         json_key="energy",
+        time_key="time_2",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
         device_class="energy",
@@ -98,6 +110,7 @@ SENSORS = {
     ),
     SENSOR_POWER_MAX: ApsMetadata(
         json_key="max",
+        time_key="time_2",
         unit=UnitOfPower.WATT,
         icon="mdi:solar-power",
         device_class="power",
@@ -107,6 +120,7 @@ SENSORS = {
     # "https://apsystemsema.com/ema/ajax/getReportApiAjax/getEnergyEveryFiveMinutesOnCurrentDayAjax"
     SENSOR_CONSUMED_TOTAL: ApsMetadata(
         json_key="usageTotal",
+        time_key="time_1",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
         device_class="energy",
@@ -114,6 +128,7 @@ SENSORS = {
     ),
     SENSOR_EXPORTED_TOTAL: ApsMetadata(
         json_key="sellTotal",
+        time_key="time_1",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
         device_class="energy",
@@ -121,6 +136,7 @@ SENSORS = {
     ),
     SENSOR_PRODUCTION_TOTAL: ApsMetadata(
         json_key="productionTotal",
+        time_key="time_1",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
         device_class="energy",
@@ -128,6 +144,7 @@ SENSORS = {
     ),
     SENSOR_IMPORTED_TOTAL: ApsMetadata(
         json_key="buyTotal",
+        time_key="time_1",
         unit=UnitOfEnergy.KILO_WATT_HOUR,
         icon="mdi:solar-power",
         device_class="energy",
@@ -164,6 +181,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     for panel in panels:
         metadata = ApsMetadata(
             json_key=panel,
+            time_key="time_2",
             unit=UnitOfPower.WATT,
             icon="mdi:solar-power",
             device_class="power",
@@ -271,13 +289,13 @@ class ApsystemsSensor(SensorEntity):
         if ap_data is None:
             self._state = STATE_UNAVAILABLE
             return
-        index = self._metadata[0]
+        index = self._metadata.json_key
         value = ap_data[index]
         if isinstance(value, list):
             value = value[-1]
 
         # get timestamp
-        index_time = SENSORS[SENSOR_TIME][0]
+        index_time = self._metadata.time_key
         timestamp = ap_data[index_time][-1]
 
         if value == timestamp:  # current attribute is the timestamp, so fix it
@@ -303,10 +321,10 @@ class ApsystemsSensor(SensorEntity):
 
 class APsystemsFetcher:
     url_login = "https://www.apsystemsema.com/ema/intoDemoUser.action?id="
-    url_datas = ["https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerOnCurrentDayAjax",
-                 "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerWithAllParameterOnCurrentDayAjax",
-                 "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getEnergyEveryFiveMinutesOnCurrentDayAjax"]
-    url_data_panel = "https://www.apsystemsema.com/ema/ajax/getViewAjax/getViewPowerByViewAjax"
+    url_datas = {"https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerOnCurrentDayAjax": ["time", "time_2"],  # time: 1720823575000 -> time_2
+                 "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getPowerWithAllParameterOnCurrentDayAjax": ["T", "time_1"],  # T: 1720800295000 -> time_1
+                 "https://www.apsystemsema.com/ema/ajax/getReportApiAjax/getEnergyEveryFiveMinutesOnCurrentDayAjax": ["time", "time_1"]}  # time: 1720800295000 -> time_1
+    url_data_panel = {"https://www.apsystemsema.com/ema/ajax/getViewAjax/getViewPowerByViewAjax": ["time", "time_2"]}  # time: 1720823575000 -> time_2
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:52.0) Chrome/50.0.2661.102 Firefox/62.0"
     }
@@ -347,7 +365,7 @@ class APsystemsFetcher:
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             _LOGGER.debug('starting: ' + now)
             self.cache = {}
-            for url_data in self.url_datas:
+            for url_data, timestamp in self.url_datas.items():
                 result_data = await self._hass.async_add_executor_job(
                     s.request,
                     "POST",
@@ -361,7 +379,10 @@ class APsystemsFetcher:
                 _LOGGER.debug("status code data: " + str(result_data.status_code))
 
                 if result_data.status_code != 204:
-                    self.cache.update(result_data.json())
+                    temp = result_data.json()
+                    temp[timestamp[1]] = temp[timestamp[0]]
+                    del timestamp[0]
+                    self.cache.update(temp)
 
             post_data = {'date': (datetime.now() - timedelta(seconds=(offset_hours / 1000))).strftime("%Y%m%d"),
                          'vid': self._view_id,
@@ -371,7 +392,7 @@ class APsystemsFetcher:
             result_data = await self._hass.async_add_executor_job(
                 s.request,
                 "POST",
-                self.url_data_panel,
+                list(self.url_data_panel.keys())[0],
                 None,
                 post_data,
                 self.headers,
@@ -382,7 +403,8 @@ class APsystemsFetcher:
 
             if result_data.status_code != 204:
                 detail = result_data.json()["detail"]
-                panels = {}
+                timestamp = list(self.url_data_panel.values())
+                panels = {timestamp[1]: result_data.json()[timestamp[0]]}
                 for panel in detail.split("&"):
                     name, data = panel.split("/")
                     panels[name] = []
