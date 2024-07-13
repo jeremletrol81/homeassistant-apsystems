@@ -9,18 +9,8 @@ from typing import Any, Dict, NamedTuple, Optional
 import homeassistant.helpers.config_validation as cv
 import requests
 import voluptuous as vol  # type: ignore
-from homeassistant.components.sensor import (
-    PLATFORM_SCHEMA,
-    SensorEntity
-    )
-from homeassistant.const import (
-    CONF_NAME,
-    STATE_UNAVAILABLE,
-    SUN_EVENT_SUNRISE,
-    SUN_EVENT_SUNSET,
-    UnitOfEnergy,
-    UnitOfPower,
-)
+from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity
+from homeassistant.const import CONF_NAME, STATE_UNAVAILABLE, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET, UnitOfEnergy, UnitOfPower
 from homeassistant.helpers.sun import get_astral_event_date
 from homeassistant.util.dt import as_local
 from homeassistant.util.dt import utcnow as dt_utcnow
@@ -44,9 +34,8 @@ SENSOR_TIME = "date"
 
 # to move apsystems timestamp to UTC
 OFFSET_MS = (
-    timedelta(hours=7).total_seconds() / timedelta(milliseconds=1).total_seconds()
+        timedelta(hours=7).total_seconds() / timedelta(milliseconds=1).total_seconds()
 )
-
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -148,7 +137,8 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "apsystems"
 
 offset_hours = (8 * 60 * 60 * 1000) - (time.localtime().tm_gmtoff * 1000)
-_LOGGER.debug("Offset set to : "+ str(offset_hours/(60*60*1000)) + " hours")
+_LOGGER.debug("Offset set to : " + str(offset_hours / (60 * 60 * 1000)) + " hours")
+
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     auth_id = config[CONF_AUTH_ID]
@@ -162,9 +152,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     sensors = []
     for type, metadata in SENSORS.items():
         sensor_name = config.get(CONF_NAME).lower() + "_" + type
-        sensor = ApsystemsSensor(
-            sensor_name, auth_id, system_id, sunset, fetcher, metadata
-        )
+        sensor = ApsystemsSensor(sensor_name, sunset, fetcher, metadata)
         sensors.append(sensor)
 
     async_add_entities(sensors, True)
@@ -174,19 +162,15 @@ class ApsystemsSensor(SensorEntity):
     """Representation of a Sensor."""
 
     def __init__(
-        self,
-        sensor_name: str,
-        auth_id: str,
-        system_id: str,
-        sunset: str,
-        fetcher: APsystemsFetcher,
-        metadata: ApsMetadata,
+            self,
+            sensor_name: str,
+            sunset: str,
+            fetcher: APsystemsFetcher,
+            metadata: ApsMetadata,
     ):
         """Initialize the sensor."""
         self._state = None
         self._name = sensor_name
-        self._auth_id = auth_id
-        self._system_id = system_id
         self._sunset = sunset
         self._fetcher = fetcher
         self._metadata = metadata
@@ -274,7 +258,7 @@ class ApsystemsSensor(SensorEntity):
         if isinstance(value, list):
             value = value[-1]
 
-        #get timestamp
+        # get timestamp
         index_time = SENSORS[SENSOR_TIME][0]
         timestamp = ap_data[index_time][-1]
 
@@ -285,7 +269,7 @@ class ApsystemsSensor(SensorEntity):
 
         self._attributes[EXTRA_TIMESTAMP] = timestamp
 
-        _LOGGER.debug(self._name +':'+str(value))
+        _LOGGER.debug(self._name + ':' + str(value))
         self._state = value
 
     def find_start_time(self, now):
@@ -331,8 +315,8 @@ class APsystemsFetcher:
         try:
             browser = await self.login()
 
-            #OLD version datetime.today().strftime("%Y%m%d")
-            post_data = {'queryDate': (datetime.now() - timedelta(seconds=(offset_hours/1000))).strftime("%Y%m%d"),
+            # OLD version datetime.today().strftime("%Y%m%d")
+            post_data = {'queryDate': (datetime.now() - timedelta(seconds=(offset_hours / 1000))).strftime("%Y%m%d"),
                          'selectedValue': self._ecu_id,
                          'systemId': self._system_id}
 
@@ -379,7 +363,7 @@ class APsystemsFetcher:
             # rules to check cache
             timestamp_event = int(self.cache['time'][-1]) + offset_hours  # apsystems have 8h delayed in timestamp from UTC
             timestamp_now = int(round(time.time() * 1000))
-            cache_time = (5 * 60 * 1000) - (10 *1000)  # 4:50 minutes
+            cache_time = (5 * 60 * 1000) - (10 * 1000)  # 4:50 minutes
             request_time = 60 * 1000  # 60 seconds to avoid request what is already requested
             _LOGGER.debug("timestamp_now " + str(timestamp_now))
             _LOGGER.debug("timestamp_event " + str(timestamp_event))
