@@ -412,7 +412,6 @@ class APsystemsFetcher:
                         panels[name].append(d)
 
                 self.cache.update(panels)
-            _LOGGER.debug(self.cache)
 
             self.cache_timestamp = int(round(time.time() * 1000))
         finally:
@@ -447,7 +446,7 @@ class APsystemsFetcher:
                 if (timestamp_now - timestamp_event > cache_time) and (timestamp_now - self.cache_timestamp > request_time):
                     await self.run()
             except Exception as e:
-                print(self.cache)
+                _LOGGER.debug(self.cache)
                 raise e
 
         return self.cache
