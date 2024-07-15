@@ -431,19 +431,23 @@ class APsystemsFetcher:
             return self.cache
         else:
             # rules to check cache
-            timestamp_event = int(self.cache[SENSORS[SENSOR_TIME].json_key][-1]) + offset_hours  # apsystems have 8h delayed in timestamp from UTC
-            timestamp_now = int(round(time.time() * 1000))
-            cache_time = (5 * 60 * 1000) - (10 * 1000)  # 4:50 minutes
-            request_time = 60 * 1000  # 60 seconds to avoid request what is already requested
-            _LOGGER.debug("timestamp_now " + str(timestamp_now))
-            _LOGGER.debug("timestamp_event " + str(timestamp_event))
-            _LOGGER.debug("timediff " + str(timestamp_now - timestamp_event))
-            _LOGGER.debug("cache_time " + str(cache_time))
-            _LOGGER.debug("self.cache_timestamp " + str(self.cache_timestamp))
-            _LOGGER.debug("timediff " + str(timestamp_now - self.cache_timestamp))
-            _LOGGER.debug("request_time " + str(request_time))
+            try:
+                timestamp_event = int(self.cache[SENSORS[SENSOR_TIME].json_key][-1]) + offset_hours  # apsystems have 8h delayed in timestamp from UTC
+                timestamp_now = int(round(time.time() * 1000))
+                cache_time = (5 * 60 * 1000) - (10 * 1000)  # 4:50 minutes
+                request_time = 60 * 1000  # 60 seconds to avoid request what is already requested
+                _LOGGER.debug("timestamp_now " + str(timestamp_now))
+                _LOGGER.debug("timestamp_event " + str(timestamp_event))
+                _LOGGER.debug("timediff " + str(timestamp_now - timestamp_event))
+                _LOGGER.debug("cache_time " + str(cache_time))
+                _LOGGER.debug("self.cache_timestamp " + str(self.cache_timestamp))
+                _LOGGER.debug("timediff " + str(timestamp_now - self.cache_timestamp))
+                _LOGGER.debug("request_time " + str(request_time))
 
-            if (timestamp_now - timestamp_event > cache_time) and (timestamp_now - self.cache_timestamp > request_time):
-                await self.run()
+                if (timestamp_now - timestamp_event > cache_time) and (timestamp_now - self.cache_timestamp > request_time):
+                    await self.run()
+            except Exception as e:
+                print(self.cache)
+                raise e
 
         return self.cache
