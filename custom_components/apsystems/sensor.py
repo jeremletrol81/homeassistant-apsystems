@@ -289,10 +289,15 @@ class ApsystemsSensor(SensorEntity):
         if ap_data is None:
             self._state = STATE_UNAVAILABLE
             return
-        index = self._metadata.json_key
-        value = ap_data[index]
-        if isinstance(value, list):
-            value = value[-1]
+
+        try:
+            index = self._metadata.json_key
+            value = ap_data[index]
+            if isinstance(value, list):
+                value = value[-1]
+        except KeyError as e:
+            _LOGGER.error(f"{e} => ap_data : {ap_data}")
+            return
 
         # get timestamp
         index_time = self._metadata.time_key
@@ -445,8 +450,8 @@ class APsystemsFetcher:
 
                 if (timestamp_now - timestamp_event > cache_time) and (timestamp_now - self.cache_timestamp > request_time):
                     await self.run()
-            except Exception as e:
-                _LOGGER.debug(self.cache)
-                raise e
+            except KeyError as e:
+                _LOGGER.error(f"{e} => self.cache : {self.cache}")
+                return None
 
         return self.cache
