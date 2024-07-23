@@ -295,8 +295,8 @@ class ApsystemsSensor(SensorEntity):
             value = ap_data[index]
             if isinstance(value, list):
                 value = value[-1]
-        except KeyError as e:
-            _LOGGER.error(f"{e} => ap_data : {ap_data}")
+        except (KeyError, IndexError) as e:
+            _LOGGER.error(f"{str(e)} => ap_data : {ap_data}")
             return
 
         # get timestamp
@@ -383,11 +383,14 @@ class APsystemsFetcher:
 
                 _LOGGER.debug("status code data: " + str(result_data.status_code))
 
-                if result_data.status_code != 204:
-                    temp = result_data.json()
-                    temp[timestamp[1]] = temp[timestamp[0]]
-                    del temp[timestamp[0]]
-                    self.cache.update(temp)
+                try:
+                    if result_data.status_code != 204:
+                        temp = result_data.json()
+                        temp[timestamp[1]] = temp[timestamp[0]]
+                        del temp[timestamp[0]]
+                        self.cache.update(temp)
+                except Exception as e:
+                    _LOGGER.error(f"{str(e)} => self.cache : {self.cache}")
 
             post_data = {'date': (datetime.now() - timedelta(seconds=(offset_hours / 1000))).strftime("%Y%m%d"),
                          'vid': self._view_id,
@@ -451,7 +454,7 @@ class APsystemsFetcher:
                 if (timestamp_now - timestamp_event > cache_time) and (timestamp_now - self.cache_timestamp > request_time):
                     await self.run()
             except KeyError as e:
-                _LOGGER.error(f"{e} => self.cache : {self.cache}")
+                _LOGGER.error(f"{str(e)} => self.cache : {self.cache}")
                 return None
 
         return self.cache
