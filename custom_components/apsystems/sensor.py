@@ -126,12 +126,8 @@ async def async_setup_entry(
 
     sensors = []
 
-    # data fetcher
-    fetcher = APsystemsFetcher(auth_id, system_id, ecu_id, view_id, entry)
-    sensors.append(fetcher)
-
     for entity_description in SENSORS:
-        sensor = ApsystemsSensor(fetcher, entity_description, entry)
+        sensor = ApsystemsSensor(entity_description, entry)
         sensors.append(sensor)
 
     for panel in panels:
@@ -143,10 +139,14 @@ async def async_setup_entry(
             device_class="power",
             state_class="measurement",
         )
-        sensor = ApsystemsSensor(fetcher, entity_description, entry)
+        sensor = ApsystemsSensor(entity_description, entry)
         sensors.append(sensor)
 
-    async_add_entities(sensors, True)
+    # data fetcher
+    fetcher = APsystemsFetcher(
+        auth_id, system_id, ecu_id, view_id, entry, sensors)
+
+    async_add_entities(sensors + [fetcher], True)
 
 
 class ApsystemsSensor(SensorEntity):
@@ -156,7 +156,6 @@ class ApsystemsSensor(SensorEntity):
 
     def __init__(
             self,
-            fetcher: APsystemsFetcher,
             entity_description: ApsystemsSensorEntityDescription,
             entry_infos
     ):
@@ -166,22 +165,15 @@ class ApsystemsSensor(SensorEntity):
         self.entity_description = entity_description
         self.native_value = None
         self._attr_available = True
+        self._attr_should_poll = False
 
-        """Initialize the sensor."""
-        self._fetcher = fetcher
-        # self._attributes: Dict[str, Any] = {}
+    # async def async_update(self, ap_data):
+    #     pass
 
-#     @property
-#     def state_attributes(self):
-#         """Return the device state attributes."""
-#         return self._attributes
-
-    async def async_update(self):
+    async def set_value(self, ap_data):
         """Fetch new state data for the sensor.
         This is the only method that should fetch new data for Home Assistant.
         """
-        ap_data = self._fetcher.data
-
         # state is not available
         if ap_data is None:
             self._attr_state = STATE_UNAVAILABLE
@@ -198,6 +190,7 @@ class ApsystemsSensor(SensorEntity):
 
         _LOGGER.debug(self.name + ':' + str(value))
         self.native_value = value
+        self._async_write_ha_state()
 
 
 class APsystemsFetcher(SensorEntity):
@@ -211,7 +204,7 @@ class APsystemsFetcher(SensorEntity):
     }
     data: Optional[Dict[Any, Any]] = None
 
-    def __init__(self, auth_id, system_id, ecu_id, view_id, entry_infos):
+    def __init__(self, auth_id, system_id, ecu_id, view_id, entry_infos, sensors: ApsystemsSensor):
         self._attr_name = entry_infos.data[CONF_NAME].lower() + "_updater"
         self._device_id = entry_infos.entry_id
         self._attr_should_poll = False
@@ -220,6 +213,7 @@ class APsystemsFetcher(SensorEntity):
         self._system_id = system_id
         self._ecu_id = ecu_id
         self._view_id = view_id
+        self._sensors: List[ApsystemsSensor] = sensors
 
     async def login(self):
         s = requests.Session()
@@ -301,6 +295,8 @@ class APsystemsFetcher(SensorEntity):
             _LOGGER.error(f"{str(e)} => self.cache : {self.data}")
         finally:
             self.native_value = as_local(dt_utcnow())
+            for sensor in self._sensors:
+                await sensor.set_value(self.data)
             self.async_write_ha_state()
 
     @callback
