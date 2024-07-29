@@ -46,6 +46,18 @@ Get the system id inside the ```managementClickCustomer()```.
 
 4 - sunset attribute could be on or off
 
+5 - Your view id is found at https://www.apsystemsema.com/ema/security/optsecondmenu/intoViewOptModule.action
+See the source code and find group view
+```html
+<option ... value="YOUR VIEW ID" ... vn="group view" ...>group view</option>
+```
+
+6 - Your panels are found at https://www.apsystemsema.com/ema/security/optsecondmenu/intoViewOptModule.action
+Right click on a panel and inspect the source code
+```html
+<div iii="YOUR PANEL ID" id="module4"
+```
+
 ### Debug
 To get debug info in the logs do
 ```yaml
