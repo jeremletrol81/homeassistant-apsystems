@@ -1,2 +1,4 @@
 .idea
 /http-request.http
+custom_components\apsystems\__pycache__
+venv
