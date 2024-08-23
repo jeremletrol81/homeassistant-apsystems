@@ -1,26 +1,20 @@
 from __future__ import annotations
 
-import asyncio
 import logging
-import time
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, NamedTuple, Optional
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.components.sensor import SensorEntity
-
-import homeassistant.helpers.config_validation as cv
 import requests
 import voluptuous as vol  # type: ignore
-from homeassistant.components.sensor import PLATFORM_SCHEMA, SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, STATE_UNAVAILABLE, UnitOfEnergy, UnitOfPower
-from homeassistant.helpers.sun import get_astral_event_date
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util.dt import as_local
 from homeassistant.util.dt import utcnow as dt_utcnow
-from dataclasses import dataclass
 
 from .const import *
 

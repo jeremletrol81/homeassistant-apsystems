@@ -12,7 +12,6 @@
                     "ecuId": "ECU id",
                     "viewId": "View id",
                     "panels": "Panels",
-                    "sunset": "Sunset",
                     "name": "Name"
                 },
                 "data_description": {}
@@ -31,7 +30,6 @@
                     "ecuId": "ECU id",
                     "viewId": "View id",
                     "panels": "Panels",
-                    "sunset": "Sunset",
                     "name": "Name"
                 },
                 "data_description": {}
